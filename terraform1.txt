@@ -1,0 +1,165 @@
+provider "aws" {
+  region = "ap-northeast-2"
+  profile = "riya"
+}
+
+
+
+resource "tls_private_key" "thiskey" {
+  algorithm = "RSA"
+}
+
+module "key_pair" {
+  source = "terraform-aws-modules/key-pair/aws"
+  create_key_pair = true
+  key_name   = "My_tera_key"
+  public_key = tls_private_key.thiskey.public_key_openssh
+
+}
+
+
+resource "aws_instance" "web" {
+  ami           = "ami-01af223aa7f274198"
+  instance_type = "t2.micro"
+  key_name = "My_tera_key"
+  security_groups = ["my-sg"]
+  connection {
+    type     = "ssh"
+    user     = "ec2-user"
+    private_key = file("C:/Users/HP/Desktop/tera-key.pem")
+    host     = aws_instance.web.public_ip
+  }
+  provisioner "remote-exec" {
+    inline = [
+     "sudo yum install httpd php git -y",
+     "sudo systemctl start httpd",
+     "sudo systemctl enable httpd",
+   ]
+  }
+
+  tags = {
+    Name = "os-terra"
+  }
+}
+
+/*resource "aws_ebs_volume" "new_ebs" {
+  availability_zone = aws_instance.web.availability_zone
+  size              = 1
+
+  tags = {
+    Name = "ebs1"
+  }
+}
+
+resource "aws_volume_attachment" "ebs_att" {
+  device_name = "/dev/sdh"
+  volume_id   = aws_ebs_volume.new_ebs.id
+  instance_id = aws_instance.web.id
+  force_detach = true
+}
+
+
+output "myos_ip" {
+  value = aws_instance.web.public_ip
+}
+
+resource "null_resource" "null-local2"  {
+	provisioner "local-exec" {
+	    command = "echo  ${aws_instance.web.public_ip} > publicip.txt"
+  	}
+}
+
+resource "null_resource" "null-remote1"  {
+	depends_on = [
+          aws_volume_attachment.ebs_att  
+     ]
+
+     
+     connection {
+    type     = "ssh"
+    user     = "ec2-user"
+    private_key = file("C:/Users/HP/Desktop/tera-key.pem")
+    host     = aws_instance.web.public_ip
+  }
+    provisioner "remote-exec" {
+	    inline=[
+               "sudo mkfs.ext4 /dev/xvdh",
+               "sudo mount /dev/xvdh /var/www/html",
+               "sudo rm -rf /var/www/html/*",
+               "sudo git clone https://github.com/aditi1819/terraform_test.git /var/www/html"
+           ]
+  	}
+}
+
+provider "aws" {
+  region = "ap-northeast-2"
+  profile = "riya"
+}
+
+resource "aws_s3_bucket" "mybucket" {
+  bucket = "kjdclejnce"
+  }
+
+resource "null_resource" "nulllocal7"  {
+	provisioner "local-exec" {
+	    command = "git clone https://github.com/aditi1819/images.git > git-test"
+  	}
+}
+
+resource "aws_s3_bucket_object" "object" {
+  bucket = "kjdclejnce"
+  key    = "new_object"
+  source = "C:/Users/HP/Desktop/tera/storage/git-test/myimg.jpg"
+
+}
+
+
+
+
+resource "aws_cloudfront_distribution" "s3_distribution" {
+  origin {
+    domain_name = aws_s3_bucket.mybucket.bucket_regional_domain_name
+    origin_id   = aws_s3_bucket.mybucket.s3_origin_id
+
+    s3_origin_config {
+      origin_access_identity = "origin-access-identity/cloudfront/ABCDEFG1234567"
+    }
+  }
+
+  enabled             = true
+  
+ default_cache_behavior {
+    allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = aws_s3_bucket.mybucket.s3_origin_id
+
+    forwarded_values {
+      query_string = false
+
+      cookies {
+        forward = "none"
+      }
+    }
+
+    viewer_protocol_policy = "allow-all"
+    min_ttl                = 0
+    default_ttl            = 3600
+    max_ttl                = 86400
+  }
+
+  
+  restrictions {
+        geo_restriction {
+            
+            restriction_type = "none"
+        }
+    }
+
+   viewer_certificate {
+        cloudfront_default_certificate = true
+    }
+
+  tags = {
+    Name = "cf-tera"
+  }
+}
