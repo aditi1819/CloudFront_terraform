@@ -42,7 +42,7 @@ resource "aws_instance" "web" {
   }
 }
 
-/*resource "aws_ebs_volume" "new_ebs" {
+resource "aws_ebs_volume" "new_ebs" {
   availability_zone = aws_instance.web.availability_zone
   size              = 1
 
@@ -91,10 +91,7 @@ resource "null_resource" "null-remote1"  {
   	}
 }
 
-provider "aws" {
-  region = "ap-northeast-2"
-  profile = "riya"
-}
+
 
 resource "aws_s3_bucket" "mybucket" {
   bucket = "kjdclejnce"
